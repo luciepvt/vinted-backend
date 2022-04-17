@@ -1,4 +1,3 @@
-// Import d'express pour pouvoir faire express.Router
 const express = require("express");
 const router = express.Router();
 // import de cloudinary
@@ -10,7 +9,7 @@ const Offer = require("../models/Offer");
 // import du middleWare
 const isAuthenticated = require("../middleWares/isAuthenticated");
 
-// paramétrage de cloudinary
+// configuration de cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
@@ -23,24 +22,33 @@ cloudinary.config({
 
 router.post("/offer/publish", isAuthenticated, async (req, res) => {
   try {
-    // envoi de l'image sur cloudinary
-    const result = await cloudinary.uploader.upload(req.files.picture.path);
-    // isAuthenticated OK!!!!!
+    const { title, description, price, condition, city, brand, size, color } =
+      req.fields;
+
+    // isAuthenticated OK
     const offer = new Offer({
-      product_name: req.fields.title,
-      product_description: req.fields.description,
-      product_price: req.fields.price,
+      product_name: title,
+      product_description: description,
+      product_price: price,
       product_details: [
-        { CONDITION: req.fields.condition },
-        { BRAND: req.fields.brand },
-        { SIZE: req.fields.size },
-        { COLOR: req.fields.color },
-        { CITY: req.fields.city },
+        { CONDITION: condition },
+        { BRAND: brand },
+        { SIZE: size },
+        { COLOR: color },
+        { CITY: city },
       ],
-      product_image: result.secure_url,
+
+      // envoi de l'image sur cloudinary
+      product_image: await cloudinary.uploader.upload(req.files.picture.path, {
+        folder: "vinted/offers",
+        public_id: `${title} - ${offer._id}`,
+      }).secure_url,
+
       owner: req.user._id,
     });
+    // enregistrement de la nouvelle annonce en bdd
     await offer.save();
+
     res.json(offer);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -53,21 +61,39 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
 
 router.put("/update/offer", async (req, res) => {
   try {
-    const result = await cloudinary.uploader.upload(req.files.picture.path);
+    // destructuring
+    const {
+      id,
+      title,
+      description,
+      price,
+      condition,
+      brand,
+      size,
+      color,
+      city,
+    } = req.fields;
+
     const offerToUpdate = await Offer.findByIdAndUpdate(
-      req.fields.id,
+      id,
       {
-        product_name: req.fields.title,
-        product_description: req.fields.description,
-        product_price: req.fields.price,
+        product_name: title,
+        product_description: description,
+        product_price: price,
         $set: {
-          "product_details.0.CONDITION": req.fields.condition,
-          "product_details.1.BRAND": req.fields.brand,
-          "product_details.2.SIZE": req.fields.size,
-          "product_details.3.COLOR": req.fields.color,
-          "product_details.4.CITY": req.fields.city,
+          "product_details.0.CONDITION": condition,
+          "product_details.1.BRAND": brand,
+          "product_details.2.SIZE": size,
+          "product_details.3.COLOR": color,
+          "product_details.4.CITY": city,
         },
-        product_image: result.secure_url,
+        product_image: await cloudinary.uploader.upload(
+          req.files.picture.path,
+          {
+            folder: "vinted/offers",
+            public_id: `${title} - ${offerToUpdate._id}`,
+          }
+        ).secure_url,
       },
       { new: true }
     );
@@ -87,30 +113,32 @@ router.put("/update/offer", async (req, res) => {
 
 router.get("/offers", async (req, res) => {
   try {
+    // destructuring
+    const { title, priceMin, priceMax, sort } = req.query;
     // faire un objet vide et à chaque query condition
     let filters = {};
-    if (req.query.title) {
-      filters.product_name = new RegExp(req.query.title, "i");
+    if (title) {
+      filters.product_name = new RegExp(title, "i");
     }
-    if (req.query.priceMin) {
-      filters.product_price = { $gte: req.query.priceMin };
+    if (priceMin) {
+      filters.product_price = { $gte: priceMin };
     }
     // on vérifie si on a deja une clé product_price dans filters
 
-    if (req.query.priceMax) {
+    if (priceMax) {
       if (filters.product_price) {
-        filters.product_price.$lte = req.query.priceMax;
+        filters.product_price.$lte = priceMax;
       } else {
-        filters.product_price = { $lte: req.query.priceMax };
+        filters.product_price = { $lte: priceMax };
       }
     }
 
     //gestion du tri avec .sort()
 
     const sortObject = {};
-    if (req.query.sort === "price-desc") {
+    if (sort === "price-desc") {
       sortObject.product_price = "desc";
-    } else if (req.query.sort === "price-asc") {
+    } else if (sort === "price-asc") {
       sortObject.product_price = "asc";
     }
 

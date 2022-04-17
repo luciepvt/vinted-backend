@@ -5,21 +5,20 @@ const User = require("../models/User");
 // ************************************************************************************************************************************************************************************************************//
 
 const isAuthenticated = async (req, res, next) => {
-  //console.log(req.headers.authorization);
+  // on vérifie si l'utilisateur est authentifié à partir de son token en bdd
   if (req.headers.authorization) {
-    const isUserValid = await User.findOne({
+    const user = await User.findOne({
       token: req.headers.authorization.replace("Bearer ", ""),
     });
-    console.log(isUserValid);
-    if (isUserValid) {
-      //envoi des infos de user sur la route /offer/publish
-      req.user = isUserValid;
-      next();
+    if (!user) {
+      res.status(400).json("Unauthorized"); // token non valide
     } else {
-      res.status(401).json({ error: "Unauthorized" }); // token non valide
+      // création de la clé user dans req.
+      req.user = user;
+      next();
     }
   } else {
-    res.status(401).json({ error: "Unauthorized" }); // token pas envoyé
+    res.status(401).json("Unauthorized"); // token pas envoyé
   }
 };
 

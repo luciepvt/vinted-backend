@@ -5,7 +5,7 @@ const router = express.Router();
 // import du modele User
 const User = require("../models/User");
 
-// installation du package crypto
+// installation du package crypto pour authentification
 const SHA256 = require("crypto-js/sha256");
 const encBase64 = require("crypto-js/enc-base64");
 const uid2 = require("uid2");
@@ -16,52 +16,47 @@ const uid2 = require("uid2");
 
 router.post("/user/signup", async (req, res) => {
   try {
+    // destructuring
+    const { username, email, password, newsletter } = req.fields;
     // gestion des erreurs
-
-    if (!req.fields.username) {
-      // commencer par le username car paramètres body qui nécessitent moins d'énergie qu'une recherche dans la bdd
-      res.status(400).json({
-        error: {
-          message: "missing parameter",
-        },
-      });
+    // 1. username n'est pas renseigné
+    if (!username) {
+      res.status(400).json({ message: "Please enter an username" });
     } else {
-      // une fois qu'on checke le username, on peut procéder à la recherche dans la bdd
-      const isMailExisting = await User.findOne({
-        email: req.fields.email,
+      // 2. email renseigné lors de l'inscription existe deja dans la bdd
+      const isEmailAlreadyExist = await User.findOne({
+        email: email,
       });
-      if (isMailExisting !== null) {
-        res.status(400).json({
-          error: {
-            message: "this email already has an account",
-          },
-        });
+      if (isEmailAlreadyExist !== null) {
+        res
+          .status(400)
+          .json({ message: "this email is already linked to another account" });
       } else {
         // 1. hasher le mdp
-        const password = req.fields.password;
         const salt = uid2(16);
         const hash = SHA256(password + salt).toString(encBase64);
         const token = uid2(16);
-        // 2. créer un nouvel utilisateur
+        // 2. creer un nouvel utilisateur
         const newUser = new User({
-          email: req.fields.email,
+          email: email,
           account: {
-            username: req.fields.username,
-            avatar: "",
+            username: username,
           },
-          newsletter: req.fields.newsletter,
+          newsletter: newsletter,
           token: token,
           hash: hash,
           salt: salt,
         });
-        await newUser.save();
+        // 3. enregistrer en bdd
+        newUser.save();
+
+        // réponse du serveur
         res.json({
           // ne surtout pas envoyer le salt et le hash
-          _id: newUser.id,
+          _id: newUser._id,
+          email: newUser.email,
           token: newUser.token,
-          account: {
-            username: newUser.account.username,
-          },
+          account: newUser.account,
         });
       }
     }
@@ -75,27 +70,22 @@ router.post("/user/signup", async (req, res) => {
 
 router.post("/user/login", async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.fields.email });
-    //console.log(user);
-    if (user === null) {
-      res.status(401).json({ message: "Unauthorized" });
+    // recherche en bdd l'utilisateur à partir de l'email renseigné
+    const userToFind = await User.findOne({ email: req.fields.email });
+    if (!userToFind) {
+      res.status(400).json("Unauthorized 1");
     } else {
-      const password = req.fields.password;
-      const salt = user.salt;
-      const hash = SHA256(password + salt).toString(encBase64);
-      if (user.hash !== hash) {
-        res.status(400).json({
-          error: {
-            message: "Unauthorized",
-          },
-        });
+      // generer un nouveau hash à partir du salt en bdd et du mdp renseigné lors de la connexion
+      const newHash = SHA256(req.fields.password + userToFind.salt).toString(
+        encBase64
+      );
+      if (newHash !== userToFind.hash) {
+        res.status(400).json("Unauthorized 2");
       } else {
         res.json({
-          _id: user.id,
-          token: user.token,
-          account: {
-            username: user.account.username,
-          },
+          _id: userToFind._id,
+          token: userToFind.token,
+          account: userToFind.account,
         });
       }
     }
