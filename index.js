@@ -3,6 +3,7 @@ const express = require("express");
 const formidableMiddleWare = require("express-formidable");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const stripe = require("stripe")(process.env.SECRET_KEY);
 
 //connexion à la bdd
 
@@ -24,6 +25,18 @@ const offerRoutes = require("./routes/offers");
 // utilisation des routes Offer :
 app.use(offerRoutes);
 
+app.post("/payment", async (req, res) => {
+  const stripeToken = req.fields.stripeToken;
+  const response = await stripe.charges.create({
+    amount: 2000,
+    currency: "eur",
+    description: "La description de l'objet acheté",
+    // On envoie ici le token
+    source: stripeToken,
+  });
+  console.log(response.status);
+  res.json(response);
+});
 app.all("*", (req, res) => {
   res.status(404).json("Page Introuvable");
 });
