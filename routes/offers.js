@@ -1,15 +1,9 @@
 const express = require("express");
 const router = express.Router();
-// import de cloudinary
 const cloudinary = require("cloudinary").v2;
-
-// import du modele Offer
 const Offer = require("../models/Offer");
-
-// import du middleWare
 const isAuthenticated = require("../middleWares/isAuthenticated");
 
-// configuration de cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.API_KEY,
@@ -38,7 +32,6 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
         { CITY: city },
       ],
 
-      // envoi de l'image sur cloudinary
       product_image: await cloudinary.uploader.upload(req.files.picture.path, {
         folder: "vinted/offers",
         public_id: `${title} - ${offer._id}`,
@@ -46,7 +39,7 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
 
       owner: req.user._id,
     });
-    // enregistrement de la nouvelle annonce en bdd
+
     await offer.save();
 
     res.json(offer);
@@ -61,7 +54,6 @@ router.post("/offer/publish", isAuthenticated, async (req, res) => {
 
 router.put("/update/offer", async (req, res) => {
   try {
-    // destructuring
     const {
       id,
       title,
@@ -113,9 +105,8 @@ router.put("/update/offer", async (req, res) => {
 
 router.get("/offers", async (req, res) => {
   try {
-    // destructuring
     const { title, priceMin, priceMax, sort } = req.query;
-    // faire un objet vide et à chaque query condition
+
     let filters = {};
     if (title) {
       filters.product_name = new RegExp(title, "i");
@@ -123,7 +114,6 @@ router.get("/offers", async (req, res) => {
     if (priceMin) {
       filters.product_price = { $gte: priceMin };
     }
-    // on vérifie si on a deja une clé product_price dans filters
 
     if (priceMax) {
       if (filters.product_price) {
@@ -133,17 +123,12 @@ router.get("/offers", async (req, res) => {
       }
     }
 
-    //gestion du tri avec .sort()
-
     const sortObject = {};
     if (sort === "price-desc") {
       sortObject.product_price = "desc";
     } else if (sort === "price-asc") {
       sortObject.product_price = "asc";
     }
-
-    // gestion de la pagination
-    // page 1 skip(number) tant que number < limit, page 2 : number = limit et < limitx2, page 3 : number = limitx2 et <limit x3
 
     let limit = 3;
     if (req.query.limit) {

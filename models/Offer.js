@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 
-// création du modele
-
 const Offer = mongoose.model("Offer", {
   product_name: String,
   product_description: String,

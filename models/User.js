@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// création du modèle
 const User = mongoose.model("User", {
   email: {
     unique: true,
