@@ -20,6 +20,8 @@ const userRoutes = require("./routes/users");
 // utilisation des routes User :
 app.use(userRoutes);
 
+const userFavoritesRoutes = require("./routes/userFavorites");
+app.use(userFavoritesRoutes);
 // importation des routes Offer :
 const offerRoutes = require("./routes/offers");
 // utilisation des routes Offer :
