@@ -10,7 +10,7 @@ const User = mongoose.model("User", {
       required: true,
       type: String,
     },
-    avatar: Object,
+    avatar: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   newsletter: Boolean,
   token: String,

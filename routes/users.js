@@ -40,7 +40,7 @@ router.post("/user/signup", async (req, res) => {
           email: email,
           account: {
             username: username,
-            avatar: await cloudinary.uploader.upload(req.files.picture.path, {
+            avatar: await cloudinary.uploader.upload(req.files.avatar.path, {
               folder: "vinted/usersavatar",
               public_id: `${username}`,
             }).secure_url,
@@ -51,6 +51,7 @@ router.post("/user/signup", async (req, res) => {
           salt: salt,
           favorites: favorites,
         });
+        console.log(req.files);
 
         newUser.save();
 
